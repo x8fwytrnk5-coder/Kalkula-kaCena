@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<title>Taxi Goral – Kalkulačka</title>
+
+<!-- PWA manifest -->
+<link rel="manifest" href="data:application/json,{
+  &quot;name&quot;: &quot;Taxi Goral Kalkulačka&quot;,
+  &quot;short_name&quot;: &quot;TaxiGoral&quot;,
+  &quot;start_url&quot;: &quot;.&quot;,
+  &quot;display&quot;: &quot;standalone&quot;,
+  &quot;background_color&quot;: &quot;#ffffff&quot;,
+  &quot;theme_color&quot;: &quot;#000000&quot;,
+  &quot;icons&quot;: [
+    {
+      &quot;src&quot;: &quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABYUlEQVR4nO2a0Q3CMAxFv0k7gA7QAbpABugAO0AG6AA7QAbpABugAO8gZ4VfqakiobP6KyHR+Y6SY+4PSJVpaz6RtWLpmjHtkobaN6D+PfYZ7R6pujISiFDUFxIr05oig3NbS1RyCBjIhF6kKIhxCB3sI5IAucs5cjoxOYD65gis6pynwkRVK5zsxFrqAKeCzjuY4xXHzkwmo7aX6ixkmKuuNHYsYAGdivgLPgAvFp8ZUBKbjsggq09uXBJgp7wa9u0JPFpKnzGWxZmf0RduCMsZ/HXXAUPI0dCN1vZEBtcHTid3e8DqRLVQjaxAg/P6MqxsVXni4eWhv14jArlTcidH833MuAdxAi8uKXu95syEHCqB6f+GO6zkRgZNpmjDoE7YQDdyCjTiMQuYzfoalGoVYBoNvKcJsteVEhDWUpAJZKkd06Pq4jG3Ejj6inUeJ8V+RaHcRUW2KIiMzFxLpy0X58F3RrgPf63HgNbUsVTNff7kwh28ykVfoCkb0N7LxyzKkAAAAASUVORK5CYII=&quot;,
+      &quot;sizes&quot;: &quot;192x192&quot;,
+      &quot;type&quot;: &quot;image/png&quot;
+    }
+  ]
+}">
+
+<meta name="theme-color" content="#000000">
+
+<style>
+  body { font-family: Arial; max-width: 600px; margin: 40px auto; }
+  input, button { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+  button { background: #333; color: white; cursor: pointer; }
+  button:hover { background: #555; }
+  #result { margin-top: 20px; font-size: 18px; }
+  #onspotBox { margin: 15px 0; }
+</style>
+</head>
+<body>
+
+<h2>🚖 Taxi Goral – Kalkulačka ceny</h2>
+
+<div id="onspotBox">
+  <label>
+    <input type="checkbox" id="onspot" onchange="toggleOnSpot()">  
+    Som už na mieste nástupu
+  </label>
+</div>
+
+<div id="startBox">
+  <label>Adresa nástupu:</label>
+  <input id="start" type="text" placeholder="Napr. Krupina, Železničná stanica">
+</div>
+
+<label>Adresa výstupu:</label>
+<input id="end" type="text" placeholder="Napr. Zvolen, Námestie SNP">
+
+<button onclick="getLocation()">Použiť moju polohu vodiča</button>
+
+<div id="driverInfo" style="margin:10px 0; font-size:14px; color:#444;"></div>
+
+<button onclick="calculate()">Vypočítať cenu</button>
+
+<div id="result"></div>
+
+<script>
+// Globálna poloha vodiča
+let driverPos = null;
+
+// Prepínač režimu
+function toggleOnSpot() {
+  const onspot = document.getElementById("onspot").checked;
+  document.getElementById("startBox").style.display = onspot ? "none" : "block";
+}
+
+// Získanie polohy vodiča
+function getLocation() {
+  const info = document.getElementById("driverInfo");
+  info.innerHTML = "⏳ Zisťujem polohu…";
+
+  if (!navigator.geolocation) {
+    info.innerHTML = "❌ Tento prehliadač nepodporuje GPS.";
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      driverPos = {
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude
+      };
+      info.innerHTML = `📍 Poloha vodiča: ${driverPos.lat.toFixed(5)}, ${driverPos.lon.toFixed(5)}`;
+    },
+    err => {
+      info.innerHTML = "❌ Nepodarilo sa získať polohu.";
+    }
+  );
+}
+
+// Geocoding – adresa → GPS
+async function geocode(address) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+  const res = await fetch(url, { headers: { "User-Agent": "TaxiGoralCalculator" }});
+  const data = await res.json();
+  if (!data.length) throw new Error("Adresa sa nenašla: " + address);
+  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+}
+
+// Výpočet trasy v km (OSRM)
+async function getDistanceKm(from, to) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.routes[0].distance / 1000;
+}
+
+// Hlavná kalkulačná funkcia
+async function calculate() {
+  const onspot = document.getElementById("onspot").checked;
+  const endAddress = document.getElementById("end").value;
+  const resultBox = document.getElementById("result");
+
+  if (!driverPos) {
+    resultBox.innerHTML = "❗ Najprv klikni na 'Použiť moju polohu vodiča'.";
+    return;
+  }
+
+  resultBox.innerHTML = "⏳ Počítam…";
+
+  try {
+    let start;
+
+    if (onspot) ;{
+      // vodič je na mieste nástupu
+      start = driverPos;
+    } else {
+      // klasický režim
+      const startAddress = document.getElementById("start").value;
+      start = await geocode(startAddress);
+    }
+
+    const end = await geocode(endAddress);
+
+    const kmClient = await getDistanceKm(start, end);
+    const kmDriver = onspot ? 0 : await getDistanceKm(driverPos, start);
+
+    const rate = onspot ? 0.85 : (kmDriver > 2 ? 1.20 : 0.85);
+    const price = kmClient * rate;
+
+    resultBox.innerHTML = `
+      <b>Výsledok:</b><br><br>
+      🚕 Vzdialenosť klienta: <b>${kmClient.toFixed(2)} km</b><br>
+      📍 Vzdialenosť vodiča: <b>${kmDriver.toFixed(2)} km</b><br>
+      💶 Sadzba: <b>${rate} €/km</b><br><br>
+      <h3>Cena jazdy: ${price.toFixed(2)} €</h3>
+    `;
+  } catch (err) {
+    resultBox.innerHTML = "❌ Chyba: " + err.message;
+  }
+}
+</script>
+
+</body>
+</html>
