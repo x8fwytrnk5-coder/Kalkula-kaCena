@@ -111,9 +111,8 @@
 
 <script>
 // -----------------------------
-// ZJEDNODUŠENÉ POLYGÓNY MIEST
+// POLYGÓNY MIEST
 // -----------------------------
-
 const polyKrupina = {
   "type": "Feature",
   "geometry": { "type": "Polygon", "coordinates": [[
@@ -136,7 +135,7 @@ const polyBB = {
 };
 
 // -----------------------------
-// FUNKCIA NA URČENIE MESTA
+// URČENIE ZÓNY
 // -----------------------------
 function getZone(point) {
     if (turf.booleanPointInPolygon(point, polyKrupina)) return "krupina";
@@ -203,9 +202,13 @@ async function calculate() {
     const resultBox = document.getElementById("result");
 
     resultBox.style.display = "block";
-
-    // 🔥 Automatický scroll k výsledku
     resultBox.scrollIntoView({ behavior: "smooth" });
+
+    // ❗ Kontrola výstupu
+    if (!endAddress) {
+        resultBox.innerHTML = "❗ Zadaj adresu výstupu.";
+        return;
+    }
 
     if (!driverPos) {
         resultBox.innerHTML = "❗ Najprv klikni na 'Použiť moju polohu vodiča'.";
@@ -220,7 +223,13 @@ async function calculate() {
         if (onspot) {
             start = driverPos;
         } else {
-            const startAddress = document.getElementById("start").value;
+            const startAddress = document.getElementById("start").value.trim();
+
+            if (!startAddress) {
+                resultBox.innerHTML = "❗ Zadaj adresu nástupu alebo zaškrtni, že si už na mieste.";
+                return;
+            }
+
             start = await geocode(startAddress);
         }
 
