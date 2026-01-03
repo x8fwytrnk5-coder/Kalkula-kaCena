@@ -1,372 +1,267 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-  <meta charset="UTF-8">
-  <title>Taxi Goral – Kalkulačka ceny</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Taxi Goral – Kalkulačka</title>
 
-  <!-- PWA -->
-  <meta name="theme-color" content="#000814">
-  <link rel="manifest" href="manifest.webmanifest">
+<!-- Turf.js na prácu s polygónmi -->
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <!-- Turf.js (zóny) -->
-  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-  <!-- Leaflet (mapa) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <style>
-    /* Neónové pozadie bez externých obrázkov */
+<style>
     body {
-      margin: 0;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-      color: #e0e0e0;
-      background: radial-gradient(circle at 20% 20%, #0033cc 0%, #000814 60%, #000000 100%);
-      background-attachment: fixed;
-    }
-
-    .wrapper {
-      max-width: 640px;
-      margin: 0 auto;
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        color: #e0e0e0;
+        background: radial-gradient(circle at 20% 20%, #0033cc 0%, #000814 60%, #000000 100%);
+        background-size: cover;
     }
 
     h2 {
-      text-align: center;
-      color: #4da6ff;
-      text-shadow: 0 0 12px #0077ff;
-      margin-bottom: 20px;
+        text-align: center;
+        color: #4da6ff;
+        text-shadow: 0 0 10px #0077ff;
     }
 
     .box {
-      background: rgba(10, 10, 20, 0.9);
-      padding: 20px;
-      border-radius: 14px;
-      box-shadow: 0 0 25px rgba(0, 120, 255, 0.35);
-      margin-bottom: 20px;
-      backdrop-filter: blur(4px);
+        background: rgba(20, 20, 20, 0.85);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 0 15px rgba(0, 120, 255, 0.3);
+        margin-bottom: 20px;
     }
 
-    label {
-      font-size: 14px;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      margin-top: 8px;
-      margin-bottom: 15px;
-      border-radius: 8px;
-      border: 1px solid #1e1e1e;
-      background: #0a0a14;
-      color: #e0e0e0;
-      font-size: 16px;
-      box-shadow: inset 0 0 10px rgba(0, 120, 255, 0.25);
+    input, select {
+        width: 100%;
+        padding: 12px;
+        margin-top: 8px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        border: 1px solid #1e1e1e;
+        background: #111;
+        color: #e0e0e0;
+        font-size: 16px;
+        box-shadow: inset 0 0 8px rgba(0, 120, 255, 0.2);
     }
 
     button {
-      width: 100%;
-      padding: 14px;
-      margin-top: 10px;
-      border: none;
-      border-radius: 10px;
-      font-size: 18px;
-      cursor: pointer;
-      background: linear-gradient(135deg, #0044ff, #0022aa);
-      color: white;
-      box-shadow: 0 0 15px #0066ff, 0 0 25px #0033cc inset;
-      transition: 0.2s;
+        width: 100%;
+        padding: 14px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        cursor: pointer;
+        background: #0033cc;
+        color: white;
+        box-shadow: 0 0 12px #0066ff, 0 0 25px #0044cc inset;
+        transition: 0.2s;
     }
 
     button:hover {
-      background: linear-gradient(135deg, #0066ff, #0033cc);
-      box-shadow: 0 0 25px #0099ff, 0 0 35px #0055ff inset;
-    }
-
-    #driverInfo {
-      margin-top: 8px;
-      font-size: 14px;
-      color: #4da6ff;
-    }
-
-    #map {
-      height: 280px;
-      margin-top: 15px;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 0 18px rgba(0, 120, 255, 0.4);
+        background: #0055ff;
+        box-shadow: 0 0 20px #0088ff, 0 0 30px #0055ff inset;
     }
 
     #result {
-      margin-top: 20px;
-      font-size: 16px;
+        margin-top: 20px;
+        font-size: 18px;
+        text-align: center;
+        display: none;
     }
 
-    #result h3 {
-      margin-top: 10px;
-      color: #4da6ff;
-      text-shadow: 0 0 12px #0077ff;
+    footer {
+        text-align: center;
+        margin-top: 40px;
+        opacity: 0.6;
+        font-size: 14px;
     }
-
-    .price-detail {
-      text-align: left;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    @media (max-width: 480px) {
-      body {
-        padding: 10px;
-      }
-      .box {
-        padding: 16px;
-      }
-      button {
-        font-size: 16px;
-      }
-    }
-  </style>
+</style>
 </head>
 
 <body>
-<div class="wrapper">
-  <h2>🚖 Taxi Goral – Kalkulačka ceny</h2>
 
-  <div class="box">
+<h2>🚖 Taxi – Kalkulačka</h2>
+
+<div class="box">
     <label>
-      <input type="checkbox" id="onspot" onchange="toggleOnSpot()">
-      Som už na mieste nástupu
+        <input type="checkbox" id="onspot" onchange="toggleOnSpot()">
+        Som už na mieste nástupu
     </label>
 
     <div id="startBox">
-      <label>Adresa nástupu:</label>
-      <input id="start" type="text" list="startSuggestions" placeholder="Napr. Krupina, Železničná stanica">
-      <datalist id="startSuggestions"></datalist>
+        <label>Adresa nástupu:</label>
+        <input id="start" type="text" placeholder="Napr. Krupina, Železničná stanica">
     </div>
 
     <label>Adresa výstupu:</label>
-    <input id="end" type="text" list="endSuggestions" placeholder="Napr. Zvolen, Námestie SNP">
-    <datalist id="endSuggestions"></datalist>
+    <input id="end" type="text" placeholder="Napr. Zvolen, Námestie SNP">
 
     <button onclick="getLocation()">Použiť moju polohu vodiča</button>
-    <div id="driverInfo"></div>
-
-    <div id="map"></div>
+    <div id="driverInfo" style="margin-top:10px; font-size:14px; color:#4da6ff;"></div>
 
     <button onclick="calculate()">Vypočítať cenu</button>
-  </div>
-
-  <div id="result" class="box" style="display:none;"></div>
 </div>
 
-<script>
-// --- PWA service worker registrácia ---
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
-}
+<div id="result"></div>
 
-// --- Polygóny miest ---
+<footer>
+© 2026 Peter Lukáč – Všetky práva vyhradené
+</footer>
+
+<script>
+// -----------------------------
+// ZJEDNODUŠENÉ POLYGÓNY MIEST
+// -----------------------------
+
 const polyKrupina = {
-  type: "Feature",
-  geometry: { type: "Polygon", coordinates: [[
+  "type": "Feature",
+  "geometry": { "type": "Polygon", "coordinates": [[
     [19.0, 48.35], [19.0, 48.60], [19.30, 48.60], [19.30, 48.35], [19.0, 48.35]
   ]]}
 };
+
 const polyZvolen = {
-  type: "Feature",
-  geometry: { type: "Polygon", coordinates: [[
+  "type": "Feature",
+  "geometry": { "type": "Polygon", "coordinates": [[
     [19.05, 48.50], [19.05, 48.65], [19.25, 48.65], [19.25, 48.50], [19.05, 48.50]
   ]]}
 };
+
 const polyBB = {
-  type: "Feature",
-  geometry: { type: "Polygon", coordinates: [[
+  "type": "Feature",
+  "geometry": { "type": "Polygon", "coordinates": [[
     [19.05, 48.65], [19.05, 48.80], [19.25, 48.80], [19.25, 48.65], [19.05, 48.65]
   ]]}
 };
 
+// -----------------------------
+// FUNKCIA NA URČENIE MESTA
+// -----------------------------
 function getZone(point) {
-  if (turf.booleanPointInPolygon(point, polyKrupina)) return "krupina";
-  if (turf.booleanPointInPolygon(point, polyZvolen)) return "zvolen";
-  if (turf.booleanPointInPolygon(point, polyBB)) return "bb";
-  return "outside";
+    if (turf.booleanPointInPolygon(point, polyKrupina)) return "krupina";
+    if (turf.booleanPointInPolygon(point, polyZvolen)) return "zvolen";
+    if (turf.booleanPointInPolygon(point, polyBB)) return "bb";
+    return "outside";
 }
 
-// --- GPS vodiča ---
+// -----------------------------
+// GPS
+// -----------------------------
 let driverPos = null;
 
 function toggleOnSpot() {
-  const onspot = document.getElementById("onspot").checked;
-  document.getElementById("startBox").style.display = onspot ? "none" : "block";
+    const onspot = document.getElementById("onspot").checked;
+    document.getElementById("startBox").style.display = onspot ? "none" : "block";
 }
 
 function getLocation() {
-  const info = document.getElementById("driverInfo");
-  info.innerHTML = "⏳ Zisťujem polohu…";
+    const info = document.getElementById("driverInfo");
+    info.innerHTML = "⏳ Zisťujem polohu…";
 
-  if (!navigator.geolocation) {
-    info.innerHTML = "❌ Prehliadač nepodporuje GPS.";
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      driverPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-      info.innerHTML = `📍 Poloha vodiča: ${driverPos.lat.toFixed(5)}, ${driverPos.lon.toFixed(5)}`;
-      if (map) {
-        const p = [driverPos.lat, driverPos.lon];
-        map.setView(p, 12);
-        if (driverMarker) {
-          driverMarker.setLatLng(p);
-        } else {
-          driverMarker = L.marker(p, { title: "Vodič" }).addTo(map);
-        }
-      }
-    },
-    () => info.innerHTML = "❌ Nepodarilo sa získať polohu."
-  );
-}
-
-// --- Autocomplete (Nominatim) ---
-async function fillSuggestions(inputEl, datalistId) {
-  const q = inputEl.value.trim();
-  if (q.length < 3) return;
-
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&addressdetails=0`;
-  try {
-    const res = await fetch(url, { headers: { "Accept-Language": "sk" } });
-    const data = await res.json();
-    const dl = document.getElementById(datalistId);
-    dl.innerHTML = "";
-    data.forEach(item => {
-      const opt = document.createElement("option");
-      opt.value = item.display_name;
-      dl.appendChild(opt);
-    });
-  } catch (e) {
-    // ticho ignorovať – autocomplete je len komfort
-  }
-}
-
-document.getElementById("start").addEventListener("input", e => fillSuggestions(e.target, "startSuggestions"));
-document.getElementById("end").addEventListener("input", e => fillSuggestions(e.target, "endSuggestions"));
-
-// --- Leaflet mapa ---
-let map, routeLayer, driverMarker;
-
-function initMap() {
-  map = L.map('map').setView([48.35, 19.0], 9);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-}
-
-document.addEventListener('DOMContentLoaded', initMap);
-
-// --- Geocoding ---
-async function geocode(address) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
-  const res = await fetch(url, { headers: { "Accept-Language": "sk" } });
-  const data = await res.json();
-  if (!data.length) throw new Error("Adresa sa nenašla: " + address);
-  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-}
-
-// --- OSRM trasa + vzdialenosť ---
-async function getRoute(from, to) {
-  const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson`;
-  const res = await fetch(url);
-  const data = await res.json();
-  const route = data.routes[0];
-  return {
-    km: route.distance / 1000,
-    line: route.geometry
-  };
-}
-
-// --- Hlavný výpočet ---
-async function calculate() {
-  const onspot = document.getElementById("onspot").checked;
-  const endAddress = document.getElementById("end").value.trim();
-  const resultBox = document.getElementById("result");
-  resultBox.style.display = "block";
-
-  if (!driverPos) {
-    resultBox.innerHTML = "❗ Najprv klikni na „Použiť moju polohu vodiča“.";
-    return;
-  }
-
-  if (!endAddress) {
-    resultBox.innerHTML = "❗ Zadaj adresu výstupu.";
-    return;
-  }
-
-  resultBox.innerHTML = "⏳ Počítam…";
-
-  try {
-    let start;
-
-    if (onspot) {
-      start = driverPos;
-    } else {
-      const startAddress = document.getElementById("start").value.trim();
-      if (!startAddress) {
-        resultBox.innerHTML = "❗ Zadaj adresu nástupu alebo zaškrtni, že si už na mieste.";
+    if (!navigator.geolocation) {
+        info.innerHTML = "❌ Prehliadač nepodporuje GPS.";
         return;
-      }
-      start = await geocode(startAddress);
     }
 
-    const end = await geocode(endAddress);
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            driverPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            info.innerHTML = `📍 Poloha vodiča: ${driverPos.lat.toFixed(5)}, ${driverPos.lon.toFixed(5)}`;
+        },
+        err => info.innerHTML = "❌ Nepodarilo sa získať polohu."
+    );
+}
 
-    const clientRoute = await getRoute(start, end);
-    const kmClient = clientRoute.km;
+// -----------------------------
+// GEOCODING
+// -----------------------------
+async function geocode(address) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.length) throw new Error("Adresa sa nenašla: " + address);
+    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+}
 
-    const kmDriver = onspot ? 0 : (await getRoute(driverPos, start)).km;
+// -----------------------------
+// OSRM VZDIALENOSŤ
+// -----------------------------
+async function getDistanceKm(from, to) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return data.routes[0].distance / 1000;
+}
 
-    const zoneStart = getZone(turf.point([start.lon, start.lat]));
-    const zoneEnd   = getZone(turf.point([end.lon, end.lat]));
+// -----------------------------
+// HLAVNÝ VÝPOČET
+// -----------------------------
+async function calculate() {
+    const onspot = document.getElementById("onspot").checked;
+    const endAddress = document.getElementById("end").value.trim();
+    const resultBox = document.getElementById("result");
 
-    const inSameZone = (zoneStart !== "outside" && zoneStart === zoneEnd);
-    const rate = inSameZone ? 0.85 : 1.20;
-    const price = kmClient * rate;
+    resultBox.style.display = "block";
 
-    // Mapa – vykreslenie trasy klienta
-    if (map) {
-      if (routeLayer) {
-        routeLayer.remove();
-      }
-      routeLayer = L.geoJSON(clientRoute.line, {
-        style: { color: '#4da6ff', weight: 4 }
-      }).addTo(map);
-      map.fitBounds(routeLayer.getBounds(), { padding: [20, 20] });
+    // 🔥 Automatický scroll k výsledku
+    resultBox.scrollIntoView({ behavior: "smooth" });
+
+    if (!driverPos) {
+        resultBox.innerHTML = "❗ Najprv klikni na 'Použiť moju polohu vodiča'.";
+        return;
     }
 
-    const zoneLabel = zone => {
-      if (zone === "krupina") return "Krupina";
-      if (zone === "zvolen") return "Zvolen";
-      if (zone === "bb") return "Banská Bystrica";
-      return "Mimo zón";
-    };
+    resultBox.innerHTML = "⏳ Počítam…";
 
-    resultBox.innerHTML = `
-      <h3>Výsledok</h3>
-      <div class="price-detail">
-        🚕 Vzdialenosť klienta: <b>${kmClient.toFixed(2)} km</b><br>
-        📍 Vzdialenosť vodiča k nástupu: <b>${kmDriver.toFixed(2)} km</b><br>
-        🗺️ Zóna nástupu: <b>${zoneLabel(zoneStart)}</b><br>
-        🎯 Zóna výstupu: <b>${zoneLabel(zoneEnd)}</b><br>
-        💶 Sadzba za km: <b>${rate.toFixed(2)} €/km</b><br>
-        <hr>
-        <b>Celková cena jazdy: ${price.toFixed(2)} €</b>
-      </div>
-    `;
-  } catch (err) {
-    resultBox.innerHTML = "❌ Chyba: " + err.message;
-  }
+    try {
+        let start;
+
+        if (onspot) {
+            start = driverPos;
+        } else {
+            const startAddress = document.getElementById("start").value;
+            start = await geocode(startAddress);
+        }
+
+        const end = await geocode(endAddress);
+
+        const kmClient = await getDistanceKm(start, end);
+        const kmDriver = onspot ? 0 : await getDistanceKm(driverPos, start);
+
+        const zoneStart = getZone(turf.point([start.lon, start.lat]));
+        const zoneEnd   = getZone(turf.point([end.lon, end.lat]));
+
+        const rate = (zoneStart !== "outside" && zoneStart === zoneEnd) ? 0.85 : 1.20;
+        const price = kmClient * rate;
+
+        resultBox.innerHTML = `
+            <b>Výsledok:</b><br><br>
+            🚕 Vzdialenosť klienta: <b>${kmClient.toFixed(2)} km</b><br>
+            📍 Vzdialenosť vodiča: <b>${kmDriver.toFixed(2)} km</b><br>
+            💶 Sadzba: <b>${rate} €/km</b><br><br>
+            <h3 style="color:#4da6ff; text-shadow:0 0 10px #0077ff;">Cena jazdy: ${price.toFixed(2)} €</h3>
+            <br>
+            <button onclick="resetForm()">Nová objednávka</button>
+        `;
+    } catch (err) {
+        resultBox.innerHTML = "❌ Chyba: " + err.message;
+    }
+}
+
+// -----------------------------
+// RESET FORMULÁRA
+// -----------------------------
+function resetForm() {
+    document.getElementById("onspot").checked = false;
+    document.getElementById("startBox").style.display = "block";
+
+    document.getElementById("start").value = "";
+    document.getElementById("end").value = "";
+
+    const resultBox = document.getElementById("result");
+    resultBox.style.display = "none";
+    resultBox.innerHTML = "";
 }
 </script>
 
