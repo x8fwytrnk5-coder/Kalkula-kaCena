@@ -135,13 +135,21 @@ const polyBB = {
 };
 
 // -----------------------------
-// URČENIE ZÓNY
+// URČENIE ZÓNY (BEZPEČNÉ AJ BEZ TURF)
 // -----------------------------
 function getZone(point) {
+    if (typeof turf === "undefined" || !point) {
+        return "outside";
+    }
     if (turf.booleanPointInPolygon(point, polyKrupina)) return "krupina";
     if (turf.booleanPointInPolygon(point, polyZvolen)) return "zvolen";
     if (turf.booleanPointInPolygon(point, polyBB)) return "bb";
     return "outside";
+}
+
+function makePoint(lon, lat) {
+    if (typeof turf === "undefined") return null;
+    return turf.point([lon, lat]);
 }
 
 // -----------------------------
@@ -204,7 +212,6 @@ async function calculate() {
     resultBox.style.display = "block";
     resultBox.scrollIntoView({ behavior: "smooth" });
 
-    // Kontrola výstupu
     if (!endAddress) {
         resultBox.innerHTML = "❗ Zadaj adresu výstupu.";
         return;
@@ -238,10 +245,18 @@ async function calculate() {
         const kmClient = await getDistanceKm(start, end);
         const kmDriver = onspot ? 0 : await getDistanceKm(driverPos, start);
 
-        const zoneStart = getZone(turf.point([start.lon, start.lat]));
-        const zoneEnd   = getZone(turf.point([end.lon, end.lat]));
+        let zoneStart = "outside";
+        let zoneEnd   = "outside";
 
-        const rate = (zoneStart !== "outside" && zoneStart === zoneEnd) ? 0.85 : 1.20;
+        if (typeof turf !== "undefined") {
+            const pStart = makePoint(start.lon, start.lat);
+            const pEnd   = makePoint(end.lon, end.lat);
+            zoneStart = getZone(pStart);
+            zoneEnd   = getZone(pEnd);
+        }
+
+        const sameZone = (zoneStart !== "outside" && zoneStart === zoneEnd);
+        const rate = sameZone ? 0.85 : 1.20;
         const price = kmClient * rate;
 
         resultBox.innerHTML = `
